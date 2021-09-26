@@ -5,7 +5,7 @@ use iced::{
     Settings, Text,
 };
 use iced::{executor, Command};
-use ser_io::{Bayer, SerFile, Endianness};
+use ser_io::{Bayer, SerFile};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -52,14 +52,6 @@ impl Application for VideoPlayer {
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
         let ser = SerFile::open(&flags.filename).unwrap();
-
-        if ser.bytes_per_pixel != 2 {
-            panic!("Only supports bytes_per_pixel == 2 so far")
-        }
-
-        if ser.endianness == Endianness::BigEndian {
-            panic!("Only LittleEndian is supported so far")
-        }
 
         let app = Self {
             ser,
