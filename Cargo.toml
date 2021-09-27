@@ -9,6 +9,11 @@ readme = "README.md"
 version = "0.1.0"
 edition = "2018"
 
+[[bin]]
+name = "astro-video-player"
+test = false
+bench = false
+
 [dependencies]
 iced = { version = "0.3", features = ["canvas", "tokio", "debug", "image"] }
 tokio = { version = "1.0", features = ["sync"] }
