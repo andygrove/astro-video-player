@@ -20,15 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-/*
-
-main_header: AviMainHeader { micro_sec_per_frame: 333333, max_bytes_per_sec: 0, padding_granularity: 512, flags: 2064, total_frames: 44, initial_frames: 0, streams: 1, suggested_buffer_size: 3819000, width: 1304, height: 976, reserved: [0, 0, 0, 0] }
-stream_header: AviStreamHeader { fcc_type: [118, 105, 100, 115], fcc_handler: [68, 73, 66, 32], flags: 0, priority: 0, language: 0, initial_frames: 0, scale: 3333333, rate: 10000000, start: 0, length: 44, suggested_buffer_size: 3819000, quality: 0, sample_size: 0, left: 0, top: 0, right: 0, bottom: 0 }
-stream_format: BitMapInfo { header: BitMapInfoHeader { size: 40, width: 1304, height: -976, planes: 1, bit_count: 24, compression: 0, size_image: 3818112, x_pels_per_meter: 4294967297, y_pels_per_meter: 0, clr_used: 0, clr_important: 65793 }, rgb: RgbQuad { blue: 2, green: 2, red: 2, reserved: 0 } }
-
-
- */
-
 use std::fmt::Display;
 use std::io::{Error, ErrorKind, Result};
 use std::str;
