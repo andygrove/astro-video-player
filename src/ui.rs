@@ -27,24 +27,21 @@ use iced::{
 };
 use iced::{executor, Command};
 
-use ser_io::SerFile;
-
-use crate::debayer::{Debayer, SimpleDebayer};
+use crate::debayer::{ImageCodec, SimpleDebayer};
+use crate::video_format::Video;
 
 pub struct VideoPlayerArgs {
-    pub ser: Option<SerFile>,
+    pub ser: Option<Box<dyn Video>>,
 }
 
 impl Default for VideoPlayerArgs {
     fn default() -> Self {
-        Self {
-            ser: None,
-        }
+        Self { ser: None }
     }
 }
 
 pub struct VideoPlayer {
-    ser: SerFile,
+    video: Box<dyn Video>,
     value: u32,
     increment_button: button::State,
     decrement_button: button::State,
@@ -62,9 +59,8 @@ impl Application for VideoPlayer {
     type Flags = VideoPlayerArgs;
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
-
         let app = Self {
-            ser: flags.ser.unwrap(),
+            video: flags.ser.unwrap(),
             value: 0,
             increment_button: button::State::default(),
             decrement_button: button::State::default(),
@@ -80,7 +76,7 @@ impl Application for VideoPlayer {
     fn update(&mut self, message: Message, _clipboard: &mut Clipboard) -> Command<Message> {
         match message {
             Message::NextFrame => {
-                if self.value + 1 < self.ser.frame_count as u32 {
+                if self.value + 1 < self.video.frame_count() as u32 {
                     self.value += 1;
                 }
             }
@@ -97,16 +93,16 @@ impl Application for VideoPlayer {
     fn view(&mut self) -> Element<Message> {
         let debayer = SimpleDebayer {};
 
-        let index = if (self.value as usize) < self.ser.frame_count {
+        let index = if (self.value as usize) < self.video.frame_count() {
             self.value as usize
         } else {
-            self.ser.frame_count - 1
+            self.video.frame_count() - 1
         };
 
-        let pixels = debayer.debayer(&self.ser, index);
+        let pixels = debayer.decode(self.video.as_ref(), index);
 
         let handle =
-            Handle::from_pixels(self.ser.image_width / 2, self.ser.image_height / 2, pixels);
+            Handle::from_pixels(self.video.image_width(), self.video.image_height(), pixels);
 
         let image = Image::new(handle).width(Length::Fill).height(Length::Fill);
 
@@ -121,7 +117,7 @@ impl Application for VideoPlayer {
                 Text::new(format!(
                     "Frame {} of {}",
                     self.value + 1,
-                    self.ser.frame_count
+                    self.video.frame_count()
                 ))
                 .size(22),
             )

@@ -4,13 +4,13 @@ Rust-based video player for astrophotography videos in SER and AVI format. Suppo
 
 ![Screenshot](docs/astro-video-player.png)
 
-Roadmap:
+Status:
 
-- [X] Works well with one SER file (RAW16, RGGB)
+- [X] Works well with one SER file (RAW16, RGGB) from ZWO ASI 294 MC
+- [X] Works well with one AVI file (GBR) from ZWO ASI 224 MC
 - [ ] Support RAW8
 - [ ] Support other bayer color encodings
 - [ ] Support mono images
-- [ ] Support AVI
 - [ ] Implement better debayering algorithm
 - [ ] Allow thumbs up/down on images, export good images to new file (or just allow frames to be dropped)
 - [ ] Support AVI <--> SER conversion

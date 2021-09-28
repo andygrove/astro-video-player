@@ -23,9 +23,11 @@
 use iced::{Application, Settings};
 use structopt::StructOpt;
 
-use astro_video_player::ui::VideoPlayerArgs;
+use astro_video_player::avi::AviFile;
 use astro_video_player::ui::VideoPlayer;
-use ser_io::{SerFile, Bayer};
+use astro_video_player::ui::VideoPlayerArgs;
+use astro_video_player::video_format::{AviVideo, SerVideo};
+use ser_io::{Bayer, SerFile};
 
 #[derive(StructOpt, Debug)]
 struct Opt {
@@ -34,23 +36,37 @@ struct Opt {
 
 pub fn main() -> iced::Result {
     let opt = Opt::from_args();
-    match SerFile::open(&opt.filename) {
-        Ok(ser) => {
-            match ser.bayer {
+
+    if opt.filename.ends_with(".AVI") {
+        let avi = AviFile::open(&opt.filename).unwrap();
+        println!("{:?}", avi.main_header());
+        println!("{:?}", avi.stream_header());
+        println!("{:?}", avi.stream_format());
+        println!("avi has {} frames", avi.frames().len());
+
+        let mut settings: Settings<VideoPlayerArgs> = Settings::default();
+        settings.flags.ser = Some(Box::new(AviVideo { avi }));
+        VideoPlayer::run(settings)
+    } else if opt.filename.ends_with(".SER") {
+        match SerFile::open(&opt.filename) {
+            Ok(ser) => match ser.bayer {
                 Bayer::RGGB => {
                     let mut settings: Settings<VideoPlayerArgs> = Settings::default();
-                    settings.flags.ser = Some(ser);
+                    settings.flags.ser = Some(Box::new(SerVideo { ser }));
                     VideoPlayer::run(settings)
                 }
                 other => {
                     println!("Unsupported bayer {:?}", other);
                     Ok(())
                 }
+            },
+            Err(e) => {
+                println!("Could not open SER file: {:?}", e);
+                Ok(())
             }
         }
-        Err(e) => {
-            println!("Could not open SER file: {:?}", e);
-            Ok(())
-        }
+    } else {
+        println!("Can only read AVI and SER");
+        Ok(())
     }
 }
