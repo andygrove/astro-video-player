@@ -83,6 +83,7 @@ dependencies = [
  "byteorder",
  "iced",
  "itertools",
+ "riff-io",
  "rustc-hash",
  "ser-io",
  "structopt",
@@ -2194,6 +2195,15 @@ checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
  "getrandom",
  "redox_syscall",
+]
+
+[[package]]
+name = "riff-io"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cc9f5158c1cd3a4b90eb096b5659b27a977f33d52aeb20220846a919de79860"
+dependencies = [
+ "memmap",
 ]
 
 [[package]]
