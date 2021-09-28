@@ -24,6 +24,7 @@ use iced::{Application, Settings};
 use structopt::StructOpt;
 
 use astro_video_player::avi::AviFile;
+use astro_video_player::codec::{DebayerCodec, RgbCodec};
 use astro_video_player::ui::VideoPlayer;
 use astro_video_player::ui::VideoPlayerArgs;
 use astro_video_player::video_format::{AviVideo, SerVideo};
@@ -45,14 +46,16 @@ pub fn main() -> iced::Result {
         println!("avi has {} frames", avi.frames().len());
 
         let mut settings: Settings<VideoPlayerArgs> = Settings::default();
-        settings.flags.ser = Some(Box::new(AviVideo { avi }));
+        settings.flags.video = Some(Box::new(AviVideo { avi }));
+        settings.flags.codec = Some(Box::new(RgbCodec {}));
         VideoPlayer::run(settings)
     } else if opt.filename.ends_with(".SER") {
         match SerFile::open(&opt.filename) {
             Ok(ser) => match ser.bayer {
                 Bayer::RGGB => {
                     let mut settings: Settings<VideoPlayerArgs> = Settings::default();
-                    settings.flags.ser = Some(Box::new(SerVideo { ser }));
+                    settings.flags.video = Some(Box::new(SerVideo { ser }));
+                    settings.flags.codec = Some(Box::new(DebayerCodec {}));
                     VideoPlayer::run(settings)
                 }
                 other => {

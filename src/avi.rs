@@ -30,10 +30,11 @@ use riff_io::{ChunkMeta, Entry, FourCC, ListMeta, RiffFile};
 // use https://www.rapidtables.com/convert/number/ascii-to-hex.html
 
 const FOURCC_AVIH: FourCC = [0x61, 0x76, 0x69, 0x68];
-const FOURCC_JUNK: FourCC = [0x4a, 0x55, 0x4e, 0x4b];
+//const FOURCC_JUNK: FourCC = [0x4a, 0x55, 0x4e, 0x4b];
 const FOURCC_HDRL: FourCC = [0x68, 0x64, 0x72, 0x6c];
 const FOURCC_STRH: FourCC = [0x73, 0x74, 0x72, 0x68];
 const FOURCC_STRF: FourCC = [0x73, 0x74, 0x72, 0x66];
+const FOURCC_INDX: FourCC = [0x69, 0x6e, 0x64, 0x78];
 const FOURCC_STRL: FourCC = [0x73, 0x74, 0x72, 0x6c];
 const FOURCC_MOVI: FourCC = [0x6d, 0x6f, 0x76, 0x69];
 
@@ -51,6 +52,26 @@ impl AviFile {
         let riff = RiffFile::open(filename)?;
         let entries = riff.read_entries()?;
 
+        /*
+                LIST 'hdrl'
+          CHUNK 'avih' offset=32 size=56
+          LIST 'strl'
+            CHUNK 'strh' offset=108 size=56
+            CHUNK 'strf' offset=172 size=1064
+            CHUNK 'indx' offset=1244 size=32248
+          LIST 'odml'
+            CHUNK 'dmlh' offset=33512 size=248
+        CHUNK 'JUNK' offset=33768 size=12
+        LIST 'movi'
+          CHUNK 'ix00' offset=33800 size=32248
+          CHUNK '00db' offset=66056 size=3818112
+          CHUNK 'JUNK' offset=3884176 size=368
+          ...
+          CHUNK '00db' offset=164261384 size=3818112
+          CHUNK 'JUNK' offset=168079504 size=368
+        CHUNK 'idx1' offset=168079880 size=1528
+                 */
+
         // main header
         let hdrl = find_mandatory_list(&entries, FOURCC_HDRL)?;
         let chunk = find_mandatory_chunk(hdrl, FOURCC_AVIH)?;
@@ -60,6 +81,7 @@ impl AviFile {
         let strl = find_mandatory_list_in_list(hdrl, FOURCC_STRL)?;
         let strh = find_mandatory_chunk(strl, FOURCC_STRH)?;
         let strf = find_mandatory_chunk(strl, FOURCC_STRF)?;
+        let _indx = find_mandatory_chunk(strl, FOURCC_INDX)?;
         let stream_header = parse_stream_header(&riff, strh)?;
         let stream_format = parse_stream_format(&riff, strf)?;
 
@@ -259,10 +281,26 @@ pub struct BitMapInfo {
 #[derive(Debug)]
 #[repr(C)]
 pub struct BitMapInfoHeader {
+    /// Specifies the number of bytes required by the structure. This value does not include the
+    /// size of the color table or the size of the color masks, if they are appended to the
+    /// end of structure
     pub size: u32,
+    /// Specifies the width of the bitmap, in pixels
     pub width: i32,
+    /// Specifies the height of the bitmap, in pixels.
+    /// For uncompressed RGB bitmaps, if biHeight is positive, the bitmap is a bottom-up DIB
+    /// with the origin at the lower left corner. If biHeight is negative, the bitmap is a
+    /// top-down DIB with the origin at the upper left corner.
+    /// For YUV bitmaps, the bitmap is always top-down, regardless of the sign of biHeight. Decoders
+    /// should offer YUV formats with positive biHeight, but for backward compatibility they
+    /// should accept YUV formats with either positive or negative biHeight.
+    /// For compressed formats, biHeight must be positive, regardless of image orientation.
     pub height: i32,
+    /// Specifies the number of planes for the target device. This value must be set to 1
     pub planes: u16,
+    /// Specifies the number of bits per pixel (bpp). For uncompressed formats, this value is
+    /// the average number of bits per pixel. For compressed formats, this value is the implied
+    /// bit depth of the uncompressed image, after the image has been decoded.
     pub bit_count: u16,
     pub compression: u32,
     pub size_image: u32,

@@ -21,6 +21,6 @@
 // SOFTWARE.
 
 pub mod avi;
-pub mod debayer;
+pub mod codec;
 pub mod ui;
 pub mod video_format;

@@ -27,21 +27,26 @@ use iced::{
 };
 use iced::{executor, Command};
 
-use crate::debayer::{ImageCodec, SimpleDebayer};
+use crate::codec::ImageCodec;
 use crate::video_format::Video;
 
 pub struct VideoPlayerArgs {
-    pub ser: Option<Box<dyn Video>>,
+    pub video: Option<Box<dyn Video>>,
+    pub codec: Option<Box<dyn ImageCodec>>,
 }
 
 impl Default for VideoPlayerArgs {
     fn default() -> Self {
-        Self { ser: None }
+        Self {
+            video: None,
+            codec: None,
+        }
     }
 }
 
 pub struct VideoPlayer {
     video: Box<dyn Video>,
+    codec: Box<dyn ImageCodec>,
     value: u32,
     increment_button: button::State,
     decrement_button: button::State,
@@ -60,7 +65,8 @@ impl Application for VideoPlayer {
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
         let app = Self {
-            video: flags.ser.unwrap(),
+            video: flags.video.unwrap(),
+            codec: flags.codec.unwrap(),
             value: 0,
             increment_button: button::State::default(),
             decrement_button: button::State::default(),
@@ -91,18 +97,15 @@ impl Application for VideoPlayer {
     }
 
     fn view(&mut self) -> Element<Message> {
-        let debayer = SimpleDebayer {};
-
         let index = if (self.value as usize) < self.video.frame_count() {
             self.value as usize
         } else {
             self.video.frame_count() - 1
         };
 
-        let pixels = debayer.decode(self.video.as_ref(), index);
+        let (w, h, pixels) = self.codec.decode(self.video.as_ref(), index);
 
-        let handle =
-            Handle::from_pixels(self.video.image_width(), self.video.image_height(), pixels);
+        let handle = Handle::from_pixels(w, h, pixels);
 
         let image = Image::new(handle).width(Length::Fill).height(Length::Fill);
 
