@@ -22,14 +22,22 @@
 
 use crate::video_format::Video;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
-use ser_io::Endianness;
+use ser_io::{Bayer, Endianness};
 
 /// Trait for all debayering implementations
 pub trait ImageCodec {
     fn decode(&self, video: &dyn Video, frame_index: usize) -> (u32, u32, Vec<u8>);
 }
 
-pub struct RgbCodec {}
+pub struct RgbCodec {
+    bayer: Bayer,
+}
+
+impl RgbCodec {
+    pub fn new(bayer: Bayer) -> Self {
+        Self { bayer }
+    }
+}
 
 impl ImageCodec for RgbCodec {
     fn decode(&self, video: &dyn Video, frame_index: usize) -> (u32, u32, Vec<u8>) {
@@ -44,10 +52,15 @@ impl ImageCodec for RgbCodec {
                 let x_offset = x * 3;
                 let offset = y_offset as usize + x_offset as usize;
 
-                //TODO assumes BGR for now but need to support RGB as well
-                let b = bytes[offset];
-                let g = bytes[offset + 1];
-                let r = bytes[offset + 2];
+                let (r, g, b) = match self.bayer {
+                    Bayer::BGR => {
+                        let b = bytes[offset];
+                        let g = bytes[offset + 1];
+                        let r = bytes[offset + 2];
+                        (r, g, b)
+                    }
+                    _ => todo!(),
+                };
 
                 // BGRa
                 pixels.push(b);
@@ -198,7 +211,7 @@ mod tests {
 
          */
 
-        let codec = RgbCodec {};
+        let codec = RgbCodec::new(Bayer::BGR);
         let (w, h, pixels) = codec.decode(video.as_ref(), 0);
         assert_eq!(1304, w);
         assert_eq!(976, h);
