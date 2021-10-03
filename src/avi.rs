@@ -37,6 +37,7 @@ const FOURCC_STRF: FourCC = [0x73, 0x74, 0x72, 0x66];
 const FOURCC_INDX: FourCC = [0x69, 0x6e, 0x64, 0x78];
 const FOURCC_STRL: FourCC = [0x73, 0x74, 0x72, 0x6c];
 const FOURCC_MOVI: FourCC = [0x6d, 0x6f, 0x76, 0x69];
+const FOURCC_VIDS: FourCC = [0x76, 0x69, 0x64, 0x73];
 
 pub struct AviFile {
     riff: RiffFile,
@@ -80,10 +81,22 @@ impl AviFile {
         // get first stream header and format (only one stream is currently supported)
         let strl = find_mandatory_list_in_list(hdrl, FOURCC_STRL)?;
         let strh = find_mandatory_chunk(strl, FOURCC_STRH)?;
-        let strf = find_mandatory_chunk(strl, FOURCC_STRF)?;
-        let _indx = find_mandatory_chunk(strl, FOURCC_INDX)?;
         let stream_header = parse_stream_header(&riff, strh)?;
+        if stream_header.fcc_type != FOURCC_VIDS {
+            return Err(Error::new(
+                ErrorKind::Other,
+                AviError::new(format!(
+                    "Unsupported stream format {}",
+                    format_fourcc(stream_header.fcc_type)
+                )),
+            ));
+        }
+
+        // parse stream format
+        let strf = find_mandatory_chunk(strl, FOURCC_STRF)?;
         let stream_format = parse_stream_format(&riff, strf)?;
+
+        let _indx = find_mandatory_chunk(strl, FOURCC_INDX)?;
 
         // video frames
         let movi = find_mandatory_list(&entries, FOURCC_MOVI)?;
@@ -132,13 +145,13 @@ impl AviFile {
 
 fn parse_main_header(riff: &RiffFile, chunk: &ChunkMeta) -> Result<AviMainHeader> {
     assert!(chunk.data_size >= 44);
-    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + chunk.chunk_size);
+    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + 44);
     Ok(unsafe { std::ptr::read(bytes.as_ptr() as *const _) })
 }
 
 fn parse_stream_header(riff: &RiffFile, chunk: &ChunkMeta) -> Result<AviStreamHeader> {
     assert!(chunk.data_size >= 56);
-    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + chunk.chunk_size);
+    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + 56);
     Ok(unsafe { std::ptr::read(bytes.as_ptr() as *const _) })
 }
 
@@ -154,7 +167,7 @@ fn parse_stream_format(riff: &RiffFile, chunk: &ChunkMeta) -> Result<BitMapInfo>
             // The number of bits-per-pixel is specified or is implied by the JPEG or PNG format.
             Err(Error::new(
                 ErrorKind::Other,
-                AviError::new("JPG and PNG are not supported".to_string()),
+                AviError::new("JPG and PNG encodings are not supported".to_string()),
             ))
         }
         1 => {
@@ -175,7 +188,7 @@ fn parse_stream_format(riff: &RiffFile, chunk: &ChunkMeta) -> Result<BitMapInfo>
             // table entry, and the second pixel contains the color in the sixteenth table entry.
             Err(Error::new(
                 ErrorKind::Other,
-                AviError::new("Unsupported bit_count".to_string()),
+                AviError::new("Unsupported bit_count (4)".to_string()),
             ))
         }
         8 => {
@@ -184,7 +197,7 @@ fn parse_stream_format(riff: &RiffFile, chunk: &ChunkMeta) -> Result<BitMapInfo>
             // single pixel.
             Err(Error::new(
                 ErrorKind::Other,
-                AviError::new("Unsupported bit_count".to_string()),
+                AviError::new("Unsupported bit_count (8)".to_string()),
             ))
         }
         16 => {
@@ -208,7 +221,7 @@ fn parse_stream_format(riff: &RiffFile, chunk: &ChunkMeta) -> Result<BitMapInfo>
             // bits in the pixel do not have to be used.
             Err(Error::new(
                 ErrorKind::Other,
-                AviError::new("Unsupported bit_count".to_string()),
+                AviError::new("Unsupported bit_count (16)".to_string()),
             ))
         }
         24 => {
@@ -243,12 +256,12 @@ fn parse_stream_format(riff: &RiffFile, chunk: &ChunkMeta) -> Result<BitMapInfo>
             // the pixel do not need to be used.
             Err(Error::new(
                 ErrorKind::Other,
-                AviError::new("Unsupported bit_count".to_string()),
+                AviError::new("Unsupported bit_count (32)".to_string()),
             ))
         }
-        _ => Err(Error::new(
+        other => Err(Error::new(
             ErrorKind::Other,
-            AviError::new("Invalid bit_count".to_string()),
+            AviError::new(format!("Invalid bit_count ({})", other)),
         )),
     }
 }
