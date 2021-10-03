@@ -30,7 +30,6 @@ use riff_io::{ChunkMeta, Entry, FourCC, ListMeta, RiffFile};
 // use https://www.rapidtables.com/convert/number/ascii-to-hex.html
 
 const FOURCC_AVIH: FourCC = [0x61, 0x76, 0x69, 0x68];
-//const FOURCC_JUNK: FourCC = [0x4a, 0x55, 0x4e, 0x4b];
 const FOURCC_HDRL: FourCC = [0x68, 0x64, 0x72, 0x6c];
 const FOURCC_STRH: FourCC = [0x73, 0x74, 0x72, 0x68];
 const FOURCC_STRF: FourCC = [0x73, 0x74, 0x72, 0x66];
@@ -38,6 +37,7 @@ const FOURCC_INDX: FourCC = [0x69, 0x6e, 0x64, 0x78];
 const FOURCC_STRL: FourCC = [0x73, 0x74, 0x72, 0x6c];
 const FOURCC_MOVI: FourCC = [0x6d, 0x6f, 0x76, 0x69];
 const FOURCC_VIDS: FourCC = [0x76, 0x69, 0x64, 0x73];
+const FOURCC_DIB_: FourCC = [0x44, 0x49, 0x42, 0x20];
 
 pub struct AviFile {
     riff: RiffFile,
@@ -82,12 +82,23 @@ impl AviFile {
         let strl = find_mandatory_list_in_list(hdrl, FOURCC_STRL)?;
         let strh = find_mandatory_chunk(strl, FOURCC_STRH)?;
         let stream_header = parse_stream_header(&riff, strh)?;
+        // only video streams are supported (no audio)
         if stream_header.fcc_type != FOURCC_VIDS {
             return Err(Error::new(
                 ErrorKind::Other,
                 AviError::new(format!(
                     "Unsupported stream format {}",
                     format_fourcc(stream_header.fcc_type)
+                )),
+            ));
+        }
+        // only DIBS is supported. No H264 support.
+        if stream_header.fcc_handler != FOURCC_DIB_ {
+            return Err(Error::new(
+                ErrorKind::Other,
+                AviError::new(format!(
+                    "Unsupported stream codec {}",
+                    format_fourcc(stream_header.fcc_handler)
                 )),
             ));
         }
@@ -150,15 +161,32 @@ fn parse_main_header(riff: &RiffFile, chunk: &ChunkMeta) -> Result<AviMainHeader
 }
 
 fn parse_stream_header(riff: &RiffFile, chunk: &ChunkMeta) -> Result<AviStreamHeader> {
-    assert!(chunk.data_size >= 56);
-    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + 56);
-    Ok(unsafe { std::ptr::read(bytes.as_ptr() as *const _) })
+    if chunk.data_size >= 56 {
+        let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + 56);
+        Ok(unsafe { std::ptr::read(bytes.as_ptr() as *const _) })
+    } else {
+        Err(Error::new(
+            ErrorKind::Other,
+            AviError::new(format!(
+                "Not enough bytes for stream header ({})",
+                chunk.data_size
+            )),
+        ))
+    }
 }
 
 fn parse_stream_format(riff: &RiffFile, chunk: &ChunkMeta) -> Result<BitMapInfo> {
-    assert!(chunk.data_size >= 48);
-    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + 48);
+    if chunk.data_size < 48 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            AviError::new(format!(
+                "Not enough bytes for stream format ({})",
+                chunk.data_size
+            )),
+        ));
+    }
 
+    let bytes = riff.read_bytes(chunk.data_offset..chunk.data_offset + 48);
     let header: BitMapInfoHeader = unsafe { std::ptr::read(bytes.as_ptr() as *const _) };
 
     // https://docs.microsoft.com/en-us/previous-versions/dd183376(v=vs.85)

@@ -38,7 +38,7 @@ struct Opt {
 pub fn main() -> iced::Result {
     let opt = Opt::from_args();
 
-    if opt.filename.ends_with(".AVI") {
+    if opt.filename.as_str().to_lowercase().ends_with(".avi") {
         let avi = AviFile::open(&opt.filename).unwrap();
         println!("{:?}", avi.main_header());
         println!("{:?}", avi.stream_header());
@@ -51,7 +51,7 @@ pub fn main() -> iced::Result {
         });
         settings.flags.video = Some(Box::new(AviVideo { avi }));
         VideoPlayer::run(settings)
-    } else if opt.filename.ends_with(".SER") {
+    } else if opt.filename.as_str().to_lowercase().ends_with(".ser") {
         match SerFile::open(&opt.filename) {
             Ok(ser) => match ser.bayer {
                 Bayer::RGGB => {
